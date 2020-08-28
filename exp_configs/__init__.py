@@ -1,5 +1,5 @@
-from . import neurips_exps
+from . import adaptive_exps
 
 EXP_GROUPS = {}
-EXP_GROUPS.update(neurips_exps.EXP_GROUPS)
+EXP_GROUPS.update(adaptive_exps.EXP_GROUPS)
 
