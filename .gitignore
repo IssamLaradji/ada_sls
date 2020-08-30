@@ -7,7 +7,6 @@ __pycache__/
 *.so
 .vscode/
 .tmp/
-results/
 # Distribution / packaging
 .Python
 build/

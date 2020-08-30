@@ -1,7 +1,7 @@
 # Ada-SLS
 ## Adaptive Gradient Methods Converge Faster with Over-Parameterization (and you can do a line-search) [[Paper]](https://arxiv.org/abs/2006.06835)
 
-Our 
+Our `AMSGrad Armijo SLS` and `AdaGrad Armijo SLS`  consistently achieve best generalization results.
 ![](results_sls.png)
 
 ## Install requirements
