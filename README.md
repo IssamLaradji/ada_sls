@@ -1,7 +1,8 @@
 # Ada-SLS
 ## Adaptive Gradient Methods Converge Faster with Over-Parameterization (and you can do a line-search) [[Paper]](https://arxiv.org/abs/2006.06835)
 
-
+Our 
+![](results_sls.png)
 
 ## Install requirements
 `pip install -r requirements.txt` 
