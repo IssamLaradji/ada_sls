@@ -11,7 +11,7 @@ Our `AMSGrad Armijo SLS` and `AdaGrad Armijo SLS`  consistently achieve best gen
 Install the Haven library for managing the experiments with 
 
 ```
-pip install --upgrade git+https://github.com/ElementAI/haven
+pip install --upgrade git+https://github.com/haven-ai/haven
 ```
 
 
