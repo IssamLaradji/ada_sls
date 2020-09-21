@@ -62,6 +62,7 @@ def trainval(exp_dict, savedir_base, reset, metrics_flag=True, datadir=None, cud
     if cuda:
         device = 'cuda'
         torch.cuda.manual_seed_all(seed)
+        assert torch.cuda.is_available(), 'cuda is not, available please run with "-c 0"'
     else:
         device = 'cpu'
 
