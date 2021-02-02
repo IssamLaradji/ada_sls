@@ -12,7 +12,7 @@ pip install git+https://github.com/IssamLaradji/sps.git
 
 ## Usage
 
-Use Sps in your code by adding the following script.
+Use AdaSls in your code by adding the following script.
 
 ```
 import adasls
