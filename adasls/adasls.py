@@ -8,7 +8,7 @@ import numpy as np
 from src.optimizers.base import utils as ut
 
 
-class AdaptiveFirst(torch.optim.Optimizer):
+class AdaSLS(torch.optim.Optimizer):
     def __init__(self,
                  params,
                  n_batches_per_epoch=500,
@@ -33,10 +33,11 @@ class AdaptiveFirst(torch.optim.Optimizer):
 
                  # sps stuff
                  adapt_flag=None,
+                 mom_type='standard'
                  ):
         params = list(params)
         super().__init__(params, {})
-
+        self.mom_type = mom_type
         self.pp_norm_method = pp_norm_method
 
         # sps stuff
@@ -50,6 +51,9 @@ class AdaptiveFirst(torch.optim.Optimizer):
 
         # others
         self.params = params
+        if self.mom_type == 'heavy_ball':
+            self.params_prev = copy.deepcopy(params) 
+
         self.c = c
         self.eta_max = eta_max
         self.gamma = gamma
@@ -85,6 +89,8 @@ class AdaptiveFirst(torch.optim.Optimizer):
             if self.base_opt == 'amsgrad':
                 self.state['gv_max'] = [torch.zeros(p.shape).to(p.device) for p in params]
 
+        # if self.mom_type == 'standard' and self.momentum != 0.:
+        #     assert self.step_size_method == 'fixed_step_size', 'standard only works with fixed step size'
     def step(self, closure, clip_grad=False):
         # increment step
         self.state['step'] += 1
@@ -144,7 +150,7 @@ class AdaptiveFirst(torch.optim.Optimizer):
         # =================
         step_size = self.get_step_size(closure_deterministic, loss, params_current, grad_current, grad_norm, pp_norm, for_backtracking=False)
             
-        self.try_sgd_precond_update(self.params, step_size, params_current, grad_current)
+        self.try_sgd_precond_update(self.params, step_size, params_current, grad_current, momentum=self.momentum)
         # save the new step-size
         self.state['step_size'] = step_size
 
@@ -250,7 +256,7 @@ class AdaptiveFirst(torch.optim.Optimizer):
                     ut.try_sgd_update(self.params, step_size, params_current, grad_current)
                 else:
                     self.try_sgd_precond_update(self.params, step_size,
-                                        params_current, grad_current, add_momentum=False)
+                                        params_current, grad_current, momentum=0.)
 
                 if for_backtracking:
                     loss_next = closure_deterministic(for_backtracking=True)
@@ -298,7 +304,7 @@ class AdaptiveFirst(torch.optim.Optimizer):
 
         return found, step_size
     @torch.no_grad()
-    def try_sgd_precond_update(self, params, step_size, params_current, grad_current, add_momentum=True):
+    def try_sgd_precond_update(self, params, step_size, params_current, grad_current, momentum):
         if self.gv_option in ['scalar']:
             zipped = zip(params, params_current, grad_current)
         
@@ -312,17 +318,13 @@ class AdaptiveFirst(torch.optim.Optimizer):
                     gv_i_scaled = scale_vector(gv_i, self.beta, self.state['step'])
                     pv_list = 1. / (torch.sqrt(gv_i_scaled) + 1e-8)
 
-                    if add_momentum == False:
-                        mv_i_scaled = (1 - self.momentum) * scale_vector(g_current, self.momentum, self.state['step'])
-                    else:
-                        mv_i_scaled = scale_vector(mv_i, self.momentum, self.state['step'])
-                    # p_next.data = p_current - step_size * (pv_list * mv_i_scaled)
-
-                    # mv_i_scaled = scale_vector(mv_i, self.momentum, self.state['step'])
-                    # p_next.data = p_current - step_size * (pv_list *  mv_i_scaled)
+                    if momentum == 0. or  self.mom_type == 'heavy_ball':
+                        mv_i_scaled = g_current
+                    elif self.mom_type == 'standard':
+                        mv_i_scaled = scale_vector(mv_i, momentum, self.state['step'])
 
                     p_next.data[:] = p_current.data
-                    p_next.data.add_(- step_size, (pv_list *  mv_i_scaled))
+                    p_next.data.add_((pv_list *  mv_i_scaled), alpha=- step_size)
             
             elif self.base_opt == 'amsgrad':
                 zipped = zip(params, params_current, grad_current, self.state['gv'], self.state['mv'])
@@ -331,15 +333,17 @@ class AdaptiveFirst(torch.optim.Optimizer):
                     self.state['gv_max'][i] = torch.max(gv_i, self.state['gv_max'][i])
                     gv_i_scaled = scale_vector(self.state['gv_max'][i], self.beta, self.state['step'])
                     pv_list = 1. / (torch.sqrt(gv_i_scaled) + 1e-8)
-
-                    if add_momentum == False:
-                        mv_i_scaled = (1 - self.momentum) * scale_vector(g_current, self.momentum, self.state['step'])
+                    
+                    if momentum == 0. or  self.mom_type == 'heavy_ball':
+                        mv_i_scaled = g_current
+                    elif self.mom_type == 'standard':
+                        mv_i_scaled = scale_vector(mv_i, momentum, self.state['step'])
                     else:
-                        mv_i_scaled = scale_vector(mv_i, self.momentum, self.state['step'])
-                    # p_next.data = p_current - step_size * (pv_list *  mv_i_scaled)
+                        raise ValueError('does not exist')
 
+                    # p_next.data = p_current - step_size * (pv_list *  mv_i_scaled)
                     p_next.data[:] = p_current.data
-                    p_next.data.add_(- step_size, (pv_list *  mv_i_scaled))
+                    p_next.data.add_((pv_list *  mv_i_scaled), alpha=- step_size)
 
             elif (self.base_opt in ['rmsprop', 'adagrad']):
                 zipped = zip(params, params_current, grad_current, self.state['gv'])
@@ -348,7 +352,7 @@ class AdaptiveFirst(torch.optim.Optimizer):
                     # p_next.data = p_current - step_size * (pv_list *  g_current)
     
                     p_next.data[:] = p_current.data
-                    p_next.data.add_(- step_size, (pv_list *  g_current))
+                    p_next.data.add_( (pv_list *  g_current), alpha=- step_size)
 
             elif (self.base_opt in ['diag_hessian', 'diag_ggn_ex', 'diag_ggn_mc']):
                 zipped = zip(params, params_current, grad_current, self.state['gv'])
@@ -358,11 +362,19 @@ class AdaptiveFirst(torch.optim.Optimizer):
 
                     # need to do this variant of the update for LSTM memory problems.
                     p_next.data[:] = p_current.data
-                    p_next.data.add_(- step_size, (pv_list *  g_current))
+                    p_next.data.add_((pv_list *  g_current), alpha=- step_size)
             
 
             else:
                 raise ValueError('%s does not exist' % self.base_opt)
+
+            # Add Heavy ball
+            if momentum!=0 and self.mom_type == 'heavy_ball':
+                params_tmp = copy.deepcopy(self.params) 
+                for p, p_prev in zip(self.params, self.params_prev):
+                    p.data.add_((p - p_prev), alpha=momentum)
+                self.params_prev = params_tmp
+                
         else:
             raise ValueError('%s does not exist' % gv_option)
 

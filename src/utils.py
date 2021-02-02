@@ -6,35 +6,6 @@ import itertools
 import torch
 import numpy as np
 import tqdm
-
-
-def opt_step(name, opt, model, batch, loss_function, use_backpack, epoch):
-    device = next(model.parameters()).device
-    images, labels = batch["images"].to(device=device), batch["labels"].to(device=device)
-
-    if (name in ['adaptive_second']):
-        closure = lambda for_backtracking=False : loss_function(model, images, labels, backwards=False, 
-                                                                backpack=(use_backpack and not for_backtracking))
-        loss = opt.step(closure)
-                
-    elif (name in ["sgd_armijo", "ssn", 'adaptive_first', 'l4', 'ali_g']):
-        closure = lambda : loss_function(model, images, labels, backwards=False, backpack=use_backpack)
-        loss = opt.step(closure)
-                
-    elif (name in ['sps']):
-        closure = lambda : loss_function(model, images, labels, backwards=False, backpack=use_backpack)
-        loss = opt.step(closure, batch)
-
-    elif (name in ["adam", "adagrad", 'radam', 'plain_radam', 'adabound']):
-        loss = loss_function(model, images, labels, backpack=use_backpack)
-        loss.backward()
-        opt.step()
-
-    else:
-        raise ValueError('%s optimizer does not exist' % name)
-    
-    return loss
-
     
 
 def save_pkl(fname, data):

@@ -1,9 +1,8 @@
 import numpy as np
-# from . import sls
 from . import others
-from . import adaptive_first, adaptive_second
+from adasls import AdaSLS
 import torch
-from src.optimizers import sls, sps, ssn
+from src.optimizers import sls, sps
 
 
 def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
@@ -24,35 +23,9 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
     # our optimizers   
     n_batches_per_epoch = opt_dict.get("n_batches_per_epoch") or n_batches_per_epoch    
     
+    if opt_name == "adaptive_first":
 
-    if opt_name == "adaptive_second":
-
-        opt = adaptive_second.AdaptiveSecond(params,
-                    c = opt_dict.get('c', None),
-                    n_batches_per_epoch=n_batches_per_epoch,
-                    # gv_option=opt_dict.get('gv_option', 'per_param'),
-                    base_opt=opt_dict.get('base_opt', 'adagrad'),
-                    accum_gv=opt_dict.get('accum_gv', None),
-                    lm=opt_dict.get('lm', 0),
-                    avg_window=opt_dict.get('window', 10),
-                    pp_norm_method=opt_dict.get('pp_norm_method', 'pp_armijo'),
-                    momentum=opt_dict.get('momentum', 0),
-                    beta=opt_dict.get('beta', 0.99),
-                    gamma=opt_dict.get('gamma', 2),
-                    # apply_sqrt=opt_dict.get('apply_sqrt', True),
-                    init_step_size=opt_dict.get('init_step_size', 1),
-                    adapt_flag=opt_dict.get('adapt_flag', 'constant'), 
-                    step_size_method=opt_dict.get('step_size_method', 'sls'), 
-                    # sls stuff
-                    beta_b=opt_dict.get('beta_b', .9),
-                    beta_f=opt_dict.get('beta_f', 2.),
-                    reset_option=opt_dict.get('reset_option', 1),
-                    line_search_fn=opt_dict.get('line_search_fn', "armijo"),   
-                    )
-                    
-    elif opt_name == "adaptive_first":
-
-        opt = adaptive_first.AdaptiveFirst(params,
+        opt = AdaSLS(params,
                     c = opt_dict['c'],
                     n_batches_per_epoch=n_batches_per_epoch,
                     gv_option=opt_dict.get('gv_option', 'per_param'),
@@ -69,6 +42,7 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
                     beta_f=opt_dict.get('beta_f', 2.),
                     reset_option=opt_dict.get('reset_option', 1),
                     line_search_fn=opt_dict.get('line_search_fn', "armijo"),   
+                    mom_type=opt_dict.get('mom_type', "standard"),   
                     )
    
     elif opt_name == "sgd_armijo":
@@ -87,7 +61,6 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
                     gamma=opt_dict.get("gamma", 2.0),
                     reset_option=opt_dict.get("reset_option", 1),
                     eta_max=opt_dict.get("eta_max"))
-
 
     elif opt_name == "sgd_goldstein":
         opt = sls.Sls(params, 
@@ -112,20 +85,6 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
                          aistats_eta_bound=opt_dict.get("aistats_eta_bound", 10.0),
                          reset_option=opt_dict.get("reset", 0))
 
-    elif opt_name == "seg":
-        opt = sls.SlsEg(params, n_batches_per_epoch=n_batches_per_epoch)
-
-    elif opt_name == "ssn":
-        opt = ssn.Ssn(params, 
-            n_batches_per_epoch=n_batches_per_epoch, 
-            init_step_size=opt_dict.get('init_step_size', 1.0), 
-            lr=None, 
-            c=opt_dict.get('c',0.1), 
-            beta=0.9, 
-            gamma=1.5,
-            reset_option=1, 
-            lm=opt_dict.get("lm", 0))
-
     # ===============================================
     # others
     elif opt_name == "adam":
@@ -135,7 +94,6 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
         opt = torch.optim.Adagrad(params, lr=opt['lr'])
 
     elif opt_name == 'sgd':
-        # best_lr = lr if lr else 1e-3
         opt = torch.optim.SGD(params, lr=opt['lr'])
 
     elif opt_name == "sgd-m":
@@ -160,13 +118,12 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
                         eta_max=opt_dict.get('eta_max'),
                         eps=opt_dict.get('eps', 0))
 
+    elif opt_name == 'coin':
+        opt = others.CocobBackprop(params)
 
     elif opt_name == 'lookahead':
         base_opt = torch.optim.Adam(params, lr=1e-3, betas=(0.9, 0.999)) # Any optimizer
         opt = others.Lookahead(base_opt, k=5, alpha=0.5) # Initialize Lookahead
-
-        # base_opt = torch.optim.Adam(params)
-        # opt = others.Lookahead(base_opt)
 
     elif opt_name == 'radam':
         opt = others.RAdam(params)
@@ -174,12 +131,16 @@ def get_optimizer(opt, params, n_batches_per_epoch=None, n_train=None, lr=None,
     elif opt_name == 'plain_radam':
         opt = others.PlainRAdam(params)
 
+    elif opt_name == 'l4':
+        params = list(params)
+        # base_opt = torch.optim.Adam(params)
+        base_opt = torch.optim.SGD(params, lr=0.01, momentum=0.5)
+        opt = others.L4(params, base_opt)
 
     else:
         raise ValueError("opt %s does not exist..." % opt_name)
 
     return opt
-
 
 
 

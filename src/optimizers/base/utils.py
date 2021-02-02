@@ -77,7 +77,7 @@ def try_sgd_update(params, step_size, params_current, grad_current):
         if g_current is None:
             continue
         p_next.data[:] = p_current.data
-        p_next.data.add_(- step_size, g_current)
+        p_next.data.add_(alpha=- step_size, other=g_current)
 
 def try_sgd_update_old(params, step_size, params_current, grad_current):
     zipped = zip(params, params_current, grad_current)

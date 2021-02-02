@@ -4,55 +4,66 @@
 Our `AMSGrad Armijo SLS` and `AdaGrad Armijo SLS`  consistently achieve best generalization results.
 ![](results/results_sls.png)
 
-## Install requirements
-`pip install -r requirements.txt` 
+## Installation
+```
+pip install git+https://github.com/IssamLaradji/sps.git
+```
 
+
+## Usage
+
+Use Sps in your code by adding the following script.
+
+```
+import adasls
+opt = adasls.AdaSLS(model.parameters())
+
+for epoch in range(100):
+    opt.zero_grad()
+    closure = lambda : torch.nn.MSELoss()(model(X), Y)
+    opt.step(closure=closure)
+```
 
 ## Experiments
 
-Run the experiments for the paper using the commands below:
+Install the requirements
 
-### Synthetic and Kernels
+`pip install -r requirements.txt` 
 
-```
-python trainval.py -e adaptive_II_syn adaptive_II_kernels -d <datadir> -sb <savedir_base>  -r 1 -c <enable_cuda>
-```
-where `<datadir>` is where the data is saved (example `.tmp/data`),  `<savedir_base>` is where the results will be saved (example `.tmp/results`), and `<enable_cuda>` is either 0 or 1. It is 1 if the user enables cuda.
-
-### Matrix Factorization Experiments
+Run the experiments for the paper using the command below:
 
 ```
-python trainval.py -e adaptive_III_mf -d <datadir> -sb <savedir_base> -r 1
+python trainval.py -e ${GROUP}_{BENCHMARK} -sb ${SAVEDIR_BASE} -d ${DATADIR} -r 1
 ```
 
-### MNIST Experiments
+with the placeholders defined as follows.
 
-```
-python trainval.py -e adaptive_III_mnist -d <datadir> -sb <savedir_base> -r 1
-```
+**{GROUP}**: 
 
-### CIFAR Experiments
+Defines the set of optimizers to run, which can either be,
 
-```
-python trainval.py -e adaptive_IV_cifar10 adaptive_IV_cifar100 -d <datadir> -sb <savedir_base> -r 1
-```
+- `nomom` for opimizers without momentum; or
+- `mom` for opimizers with momentum.
 
-### ImageNet Experiments
+**{BENCHMARK}**: 
 
-```
-python trainval.py -e adaptive_V_imagenet200 adaptive_V_imagenet10 -d <datadir> -sb <savedir_base> -r 1
-```
+Defines the dataset, evaluation metric and model for the experiments (see `exp_configs.py`), which can be,
 
+- `syn` for the synthetic experiments;
+- `kernels` for the kernel experiments;
+- `mf` for matrix factorization experiments;
+- `mnist` for the mnist experiments;
+- `cifar10`, `cifar100`, `cifar10_nobn`, `cifar100_nobn` for the cifar experiments; or
+- `imagenet200`, `imagenet10` for the imagenet experiments.
 
-## Results
+**{SAVEDIR_BASE}**: 
 
-View results by running the following command.
+Defines the absolute path to where the results will be saved.
 
-```
-python trainval.py -e adaptive_III_mnist -v 1 -d <datadir> -sb <savedir_base>
-```
+**{DATADIR}**: 
 
-where `<datadir>` is where the data is saved, and `<savedir_base>` is where the results will be saved.
+Defines the absolute path containing the downloaded datasets.
+
 
 ## Cite
 ```
