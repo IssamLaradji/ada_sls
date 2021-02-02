@@ -47,6 +47,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
                     ])
             # define dataloader
+            datadir = '/mnt/public/datasets/imagenet/imagenet_200/train/'
             dataset = torchvision.datasets.ImageFolder(root=datadir, 
                                                         transform=transform_train)
 
@@ -56,6 +57,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ])
+            datadir = '/mnt/public/datasets/imagenet/imagenet_200/val/'
             dataset = torchvision.datasets.ImageFolder(root=datadir, 
                                                        transform=transform_test)
 
@@ -70,6 +72,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
                     ])
             # define dataloader
+            datadir = '/mnt/public/datasets/imagenet/imagenette2-160/train/'
             dataset = torchvision.datasets.ImageFolder(root=datadir, 
                                                         transform=transform_train)
 
@@ -80,6 +83,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ])
+            datadir = '/mnt/public/datasets/imagenet/imagenette2-160/val/'
             dataset = torchvision.datasets.ImageFolder(root=datadir, 
                                                        transform=transform_test)
 
@@ -94,6 +98,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
                     ])
             # define dataloader
+            datadir = '/mnt/public/datasets/imagenet/imagewoof2-160/train/'
             dataset = torchvision.datasets.ImageFolder(root=datadir, 
                                                         transform=transform_train)
 
@@ -104,6 +109,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 transforms.ToTensor(),
                 transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
             ])
+            datadir = '/mnt/public/datasets/imagenet/imagewoof2-160/val/'
             dataset = torchvision.datasets.ImageFolder(root=datadir, 
                                                        transform=transform_test)
 
@@ -150,6 +156,23 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
             transform=transform_function)
 
     if dataset_name in ['B', 'C']:
+        # 0.5 * ||Ax - b||^2
+        
+        # n=1000 
+        # p=10000
+        # bias=1
+        # X = np.random.randn(n, p) + bias
+    
+        # scaling = 10
+        # X = np.dot(X, np.diag(scaling*np.random.randn(p)))
+    
+        # sparsity = 10
+        # X = X * (np.random.rand(n, p) < sparsity * np.log(n)/n)
+    
+        # solutionSparsity = 0.1
+        # w = np.random.randn(p,1) * (np.random.rand(p,1) < solutionSparsity)
+    
+        # y = np.dot(X,w) + np.random.randn(n,1)
         bias = 1; 
         scaling = 10; 
         sparsity = 10; 
@@ -239,6 +262,7 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
                 k_test_X = np.load(fname_rbf)
             else:
                 k_test_X = rbf_kernel(X_test, X_train, sigma_dict[dataset_name])
+                # ut.save_pkl(fname_rbf, k_test_X)
                 np.save(fname_rbf, k_test_X)
                 print('%s saved' % fname_rbf)
 
@@ -247,6 +271,12 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
             Y_test = torch.LongTensor(Y_test)
 
             dataset = torch.utils.data.TensorDataset(X_test, Y_test)
+
+    # if dataset_name == "a1a":
+    #     print()
+
+    # if dataset_name == "abalone":
+    #     print()
 
     if dataset_name == "synthetic":
         margin = exp_dict["margin"]
@@ -262,6 +292,17 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
         splits = train_test_split(X, y, test_size=0.2, shuffle=False, random_state=42)
         X_train, X_test, Y_train, Y_test = splits
 
+        # ====================
+        # s_list = np.ones(X_train.shape[0])*-1
+        # for i in range(X_train.shape[0]):
+        #     x = X_train[i]
+        #     xx = np.outer(x, x)
+        #     e = np.linalg.eigh(xx)[0].max()
+        #     s = 1./(0.5*e + 2*1e-4)
+        #     s_list[i] = s
+        # print('margin', margin, 's_max', s_list.max())
+
+        # =====================
         X_train = torch.FloatTensor(X_train)
         X_test = torch.FloatTensor(X_test)
 
@@ -272,7 +313,50 @@ def get_dataset(dataset_name, train_flag, datadir, exp_dict):
             dataset = torch.utils.data.TensorDataset(X_train, Y_train)
         else:
             dataset = torch.utils.data.TensorDataset(X_test, Y_test)
-    
+
+
+    if dataset_name == "pmnist":
+        # dataset options
+        rng_permute = np.random.RandomState(92916)
+        idx_permute = torch.from_numpy(rng_permute.permutation(784))
+        view = torchvision.transforms.Lambda(lambda x: x.view(-1)[idx_permute].view(28, 28))
+
+        transform_func = torchvision.transforms.Compose([
+                                        torchvision.transforms.ToTensor(),
+                                         torchvision.transforms.Normalize(
+                                       (0.5,), (0.5,)),
+                                        view
+                                        ])
+        if train_flag:
+            dataset = torchvision.datasets.MNIST(datadir, train=True,
+                                        download=True,
+                                        transform=transform_func
+                                        
+                                        )
+        else:
+            dataset = torchvision.datasets.MNIST(datadir, train=False, download=True,
+                                        transform=transform_func)
+        n_classes = 10
+
+    if dataset_name == "smnist":
+        # dataset options
+        view = torchvision.transforms.Lambda(lambda x: x.view(-1).view(28, 28))
+        transform_func = torchvision.transforms.Compose([
+                                        torchvision.transforms.ToTensor(),
+                                         torchvision.transforms.Normalize(
+                                       (0.5,), (0.5,)),
+                                        view
+                                        ])
+        if train_flag:
+            dataset = torchvision.datasets.MNIST(datadir, train=True,
+                                        download=True,
+                                        transform=transform_func)
+        else:
+            dataset = torchvision.datasets.MNIST(datadir, train=False,
+                                     download=True,
+                                        transform=transform_func)
+        n_classes = 10    
+
     if dataset_name == "matrix_fac":
         fname = datadir + 'matrix_fac.pkl'
         if not os.path.exists(fname):
