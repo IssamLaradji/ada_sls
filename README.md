@@ -6,7 +6,7 @@ Our `AMSGrad Armijo SLS` and `AdaGrad Armijo SLS`  consistently achieve best gen
 
 ## Installation
 ```
-pip install git+https://github.com/IssamLaradji/sps.git
+pip install git+https://github.com/IssamLaradji/adasls.git
 ```
 
 
