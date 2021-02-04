@@ -3,7 +3,7 @@ from setuptools import setup
 setup(name='adasls',
       version='0.6.0',
       description='Adaptive Stochastic Line Search',
-      url='git@github.com:IssamLaradji/sls.git',
+      url='git@github.com:IssamLaradji/ada_sls.git',
       maintainer='Issam Laradji',
       maintainer_email='issam.laradji@gmail.com',
       license='MIT',
