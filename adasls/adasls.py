@@ -5,7 +5,7 @@ import math
 import torch
 import numpy as np
 
-from src.optimizers.base import utils as ut
+from . import utils as ut
 
 
 class AdaSLS(torch.optim.Optimizer):
